@@ -4,7 +4,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Product, ProductCategory, CartItem, Order } from '@/types';
 import { supabase } from '@/lib/supabase';
-import { Search, Plus, Minus, Trash2, Send, ChefHat, Package } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Send, ChefHat, Package, UtensilsCrossed } from 'lucide-react';
+
+const customizationOptions = [
+  { id: 'extra_cheese', label: 'Extra cheese' },
+  { id: 'no_onion', label: 'No onion' },
+  { id: 'no_salt', label: 'No salt' },
+  { id: 'extra_spice', label: 'Extra spice' },
+  { id: 'extra_sauce', label: 'Extra sauce' },
+];
 
 export default function SalesPage() {
   const router = useRouter();
@@ -18,6 +26,8 @@ export default function SalesPage() {
   const [customerCount, setCustomerCount] = useState(2);
   const [discount, setDiscount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedCustomizations, setSelectedCustomizations] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -39,16 +49,24 @@ export default function SalesPage() {
   const total = Math.max(0, subtotal + tax - discount);
 
   const addToCart = (product: Product) => {
-    setCart(prev => {
-      const exists = prev.find(item => item.product.id === product.id);
-      if (exists) return prev.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-      return [...prev, { product, quantity: 1 }];
-    });
+    setSelectedProduct(product);
+    setSelectedCustomizations([]);
   };
 
-  const updateQty = (id: string, qty: number) => {
-    if (qty <= 0) return setCart(prev => prev.filter(item => item.product.id !== id));
-    setCart(prev => prev.map(item => item.product.id === id ? { ...item, quantity: qty } : item));
+  const confirmAddToCart = () => {
+    if (!selectedProduct) return;
+    setCart(prev => {
+      const exists = prev.find(item => item.product.id === selectedProduct.id && JSON.stringify(item.customizations) === JSON.stringify(selectedCustomizations));
+      if (exists) return prev.map(item => item.product.id === selectedProduct.id && JSON.stringify(item.customizations) === JSON.stringify(selectedCustomizations) ? { ...item, quantity: item.quantity + 1 } : item);
+      return [...prev, { product: selectedProduct, quantity: 1, customizations: selectedCustomizations }];
+    });
+    setSelectedProduct(null);
+    setSelectedCustomizations([]);
+  };
+
+  const updateQty = (id: string, qty: number, customizations?: string[]) => {
+    if (qty <= 0) return setCart(prev => prev.filter(item => !(item.product.id === id && JSON.stringify(item.customizations) === JSON.stringify(customizations))));
+    setCart(prev => prev.map(item => item.product.id === id && JSON.stringify(item.customizations) === JSON.stringify(customizations) ? { ...item, quantity: qty } : item));
   };
 
   const sendToKitchen = async () => {
@@ -60,7 +78,7 @@ export default function SalesPage() {
       product_name: ci.product.name,
       quantity: ci.quantity,
       unit_price: ci.product.price,
-      customizations: {},
+      customizations: ci.customizations || [],
     }));
     if (!supabase) return;
     const orderPayload = {
@@ -117,6 +135,26 @@ export default function SalesPage() {
             </div>
           ))}
         </div>
+        {selectedProduct && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+              <h3 className="text-lg font-bold mb-1">{selectedProduct.name}</h3>
+              <p className="text-sm text-gray-500 mb-4">Customize order</p>
+              <div className="space-y-2 mb-4">
+                {customizationOptions.map(opt => (
+                  <label key={opt.id} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={selectedCustomizations.includes(opt.label)} onChange={e => setSelectedCustomizations(prev => e.target.checked ? [...prev, opt.label] : prev.filter(x => x !== opt.label))} />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+              <div className="flex gap-3">
+                <button onClick={confirmAddToCart} className="flex-1 bg-blue-600 text-white rounded-xl py-2">Add to cart</button>
+                <button onClick={() => setSelectedProduct(null)} className="flex-1 border rounded-xl py-2">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <div className="w-[420px] bg-white border rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
@@ -133,15 +171,18 @@ export default function SalesPage() {
         <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Customer name" className="w-full border rounded-lg px-3 py-2 mb-3" />
         <div className="space-y-3 mb-4">
           {cart.map(item => (
-            <div key={item.product.id} className="flex items-center justify-between border rounded-xl px-3 py-3">
-              <div>
-                <p className="font-medium text-sm">{item.product.name}</p>
-                <p className="text-xs text-gray-500">${item.product.price.toFixed(2)} x {item.quantity}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => updateQty(item.product.id, item.quantity - 1)} className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-gray-50"><Minus size={14} /></button>
-                <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
-                <button onClick={() => updateQty(item.product.id, item.quantity + 1)} className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-gray-50"><Plus size={14} /></button>
+            <div key={`${item.product.id}-${JSON.stringify(item.customizations)}`} className="border rounded-xl px-3 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">{item.product.name}</p>
+                  {item.customizations?.length ? <p className="text-xs text-gray-500">{item.customizations.join(', ')}</p> : null}
+                  <p className="text-xs text-gray-500">${item.product.price.toFixed(2)} x {item.quantity}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => updateQty(item.product.id, item.quantity - 1, item.customizations)} className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-gray-50"><Minus size={14} /></button>
+                  <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
+                  <button onClick={() => updateQty(item.product.id, item.quantity + 1, item.customizations)} className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-gray-50"><Plus size={14} /></button>
+                </div>
               </div>
             </div>
           ))}

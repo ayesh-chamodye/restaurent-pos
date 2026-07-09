@@ -30,6 +30,7 @@ export interface Product {
 export interface CartItem {
   product: Product;
   quantity: number;
+  customizations?: string[];
 }
 
 export interface Order {
