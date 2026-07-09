@@ -5,7 +5,7 @@ import { authOptions } from './route';
 export async function requireServerAuth() {
   const session = await getServerSession(authOptions);
   if (!session) {
-    redirect('/login');
+    redirect('/auth/login');
   }
   return session;
 }

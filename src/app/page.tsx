@@ -33,7 +33,7 @@ export default function Home() {
             <span className="text-lg font-semibold">Restaurant POS</span>
           </div>
           <a
-            href="/login"
+            href="/auth/login"
             className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
           >
             Login
@@ -51,7 +51,7 @@ export default function Home() {
             reliable dashboard built for restaurant teams.
           </p>
           <a
-            href="/login"
+            href="/auth/login"
             className="inline-flex items-center justify-center bg-gray-900 text-white px-8 py-3 rounded-lg text-base font-medium hover:bg-gray-800 transition-colors"
           >
             Get Started
