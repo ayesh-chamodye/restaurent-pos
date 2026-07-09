@@ -1,34 +1,10 @@
-'use client';
+import DashboardLayoutClient from '../layout-client';
+import ProfilePageClient from './page-client';
 
-import { useState } from 'react';
-import { useAuth } from '@/lib/auth';
-
-export default function ProfilePage() {
-  const { user } = useAuth();
-  const [name, setName] = useState(user?.name || '');
-  const [message, setMessage] = useState('');
-
-  const save = () => {
-    setMessage('Profile updated');
-  };
-
-  if (!user) return <div className="text-center text-gray-500">Loading...</div>;
-
+export default async function ProfilePage() {
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">Profile</h1>
-      <form onSubmit={(e) => { e.preventDefault(); save(); }} className="bg-white border rounded-2xl p-6 space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded-xl px-3 py-2" required />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <input value={user.email} readOnly className="w-full border rounded-xl px-3 py-2 bg-gray-50" />
-        </div>
-        {message && <p className="text-green-600 text-sm">{message}</p>}
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-xl">Save Changes</button>
-      </form>
-    </div>
+    <DashboardLayoutClient user={{ name: '', email: '', role: 'admin' }} orderCount={0} tableCount={0} reservationCount={0}>
+      <ProfilePageClient initialUser={{ name: '', email: '' }} />
+    </DashboardLayoutClient>
   );
 }
