@@ -6,10 +6,11 @@ import { useAuth } from '@/lib/auth';
 import { signIn, signOut, useSession } from 'next-auth/react';
 
 export default function LoginPage() {
-  const [pin, setPin] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
-  const { login, user: localUser, logout: localLogout } = useAuth();
+  const { user: localUser } = useAuth();
   const { data: session, status } = useSession();
 
   useEffect(() => {
@@ -32,14 +33,18 @@ export default function LoginPage() {
     );
   }
 
-  const handlePinSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const found = login(pin);
-    if (found) {
-      router.push('/dashboard');
+    const result = await signIn('credentials', {
+      email,
+      password,
+      redirect: false,
+    });
+    if (result?.error) {
+      setError('Invalid email or password');
     } else {
-      setError('Invalid PIN');
+      router.push('/dashboard');
     }
   };
 
@@ -89,11 +94,11 @@ export default function LoginPage() {
               <div className="w-full border-t border-gray-200"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with PIN</span>
+              <span className="px-2 bg-white text-gray-500">Or continue with email</span>
             </div>
           </div>
 
-          <form onSubmit={handlePinSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
                 {error}
@@ -101,19 +106,32 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-1">
-                PIN
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email
               </label>
               <input
-                id="pin"
-                type="password"
-                inputMode="numeric"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="••••"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                placeholder="you@example.com"
                 required
-                maxLength={10}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                placeholder="••••••••"
+                required
               />
             </div>
 
@@ -121,15 +139,15 @@ export default function LoginPage() {
               type="submit"
               className="w-full bg-gray-900 text-white py-2.5 rounded-lg font-medium hover:bg-gray-800 transition-colors"
             >
-              Login with PIN
+              Sign In
             </button>
           </form>
         </div>
 
         <div className="mt-6 pt-4 border-t">
           <p className="text-xs text-gray-400 text-center">
-            Demo PINs: <span className="font-mono">1234</span> (admin),{' '}
-            <span className="font-mono">1111</span> (cashier)
+            Demo: <span className="font-mono">admin@pos.com</span> / <span className="font-mono">admin123</span> or{' '}
+            <span className="font-mono">john@pos.com</span> / <span className="font-mono">cashier123</span>
           </p>
         </div>
       </div>
