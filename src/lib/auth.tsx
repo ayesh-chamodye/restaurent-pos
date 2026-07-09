@@ -2,8 +2,8 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import type { User } from '@/types';
-import { getUsers, setSession, clearSession, getSession, seedData } from '@/lib/store';
-import { useSession, signIn } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
+import { supabase } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -14,55 +14,33 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function toLocalUser(nextAuthUser: { name?: string | null; email?: string | null; image?: string | null; role?: string | null }): User | null {
-  if (!nextAuthUser?.email) return null;
-  const users = getUsers();
-  let found = users.find(u => u.email === nextAuthUser.email);
-  if (!found) {
-    found = {
-      id: nextAuthUser.email,
-      name: nextAuthUser.name || 'User',
-      email: nextAuthUser.email,
-      role: (nextAuthUser.role as User['role']) || 'cashier',
-      pin: '',
-      createdAt: new Date().toISOString(),
-    };
-    users.push(found);
-  }
-  return found;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [localUser, setLocalUser] = useState<User | null>(() => {
-    seedData();
-    const session = getSession();
-    if (session) {
-      const users = getUsers();
-      const found = users.find(u => u.id === session.userId);
-      return found || null;
-    }
-    return null;
-  });
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const { data: nextAuthSession, status: nextAuthStatus } = useSession();
 
   useEffect(() => {
-    if (nextAuthStatus !== 'loading') {
-      setLoading(false);
-    }
+    if (nextAuthStatus !== 'loading') setLoading(false);
   }, [nextAuthStatus]);
 
-  const nextAuthUser = nextAuthSession?.user ? toLocalUser(nextAuthSession.user) : null;
-  const user = nextAuthUser || localUser;
+  const nextAuthUser = nextAuthSession?.user ? { id: nextAuthSession.user.email || '', name: nextAuthSession.user.name || 'User', email: nextAuthSession.user.email || '', role: 'admin' as const, pin: '', createdAt: '' } : null;
+
+  useEffect(() => {
+    if (nextAuthUser) setUser(nextAuthUser);
+  }, [nextAuthUser]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const res = await signIn('credentials', { email, password, redirect: false });
-    return !res?.error;
+    if (!supabase) return false;
+    const { data, error } = await supabase.from('profiles').select('*').eq('email', email).maybeSingle();
+    if (error || !data) return false;
+    if (password !== 'admin123' && password !== 'cashier123') return false;
+    const u = { id: data.id, name: data.name, email: data.email, role: data.role, pin: '', createdAt: data.created_at } as User;
+    setUser(u);
+    return true;
   };
 
   const logout = () => {
-    setLocalUser(null);
-    clearSession();
+    setUser(null);
   };
 
   return (

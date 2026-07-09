@@ -34,15 +34,21 @@ export interface CartItem {
 
 export interface Order {
   id: string;
+  table_id?: string;
+  table_number?: number;
+  customer_name?: string;
+  customer_count?: number;
   items: CartItem[];
   subtotal: number;
   tax: number;
   discount: number;
   total: number;
-  paymentMethod: 'cash' | 'card' | 'mobile';
-  cashierId: string;
-  cashierName: string;
-  createdAt: string;
+  payment_method: 'cash' | 'card' | 'mobile';
+  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+  notes?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DailyReport {
@@ -50,4 +56,13 @@ export interface DailyReport {
   totalSales: number;
   totalOrders: number;
   totalItems: number;
+}
+
+export interface Table {
+  id: string;
+  number: number;
+  capacity: number;
+  status: 'available' | 'occupied' | 'reserved';
+  current_order_id?: string;
+  created_at: string;
 }

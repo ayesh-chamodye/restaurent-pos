@@ -1,175 +1,155 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import type { Product, CartItem, Order } from '@/types';
-import { getProducts, saveProducts, saveOrders, getOrders, seedData } from '@/lib/store';
-import { useAuth } from '@/lib/auth';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import type { Product, ProductCategory, CartItem, Order } from '@/types';
+import { supabase } from '@/lib/supabase';
 
 export default function SalesPage() {
-  const [products, setProducts] = useState<Product[]>(() => {
-    seedData();
-    return getProducts();
-  });
+  const router = useRouter();
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [search, setSearch] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'mobile'>('cash');
-  const [barcodeInput, setBarcodeInput] = useState('');
-  const [receipt, setReceipt] = useState<Order | null>(null);
-  const orderIdRef = useRef(0);
-  const { user } = useAuth();
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [tableId, setTableId] = useState('');
+  const [tables, setTables] = useState<{id:string; number:number; status:string}[]>([]);
+  const [customerName, setCustomerName] = useState('');
+  const [customerCount, setCustomerCount] = useState(2);
+  const [discount, setDiscount] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
-  const filtered = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.barcode?.includes(search));
+  useEffect(() => {
+    const load = async () => {
+      if (!supabase) return;
+      const { data: cats } = await supabase.from('categories').select('*');
+      setCategories(cats || []);
+      const { data: prods } = await supabase.from('products').select('*').gt('stock', 0).order('name');
+      setProducts(prods || []);
+      const { data: tbls } = await supabase.from('tables').select('id,number,status').order('number');
+      setTables(tbls || []);
+    };
+    load();
+  }, []);
+
+  const filtered = categoryFilter === 'All' ? products : products.filter(p => p.categoryId === categoryFilter);
+
+  const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const tax = subtotal * 0.0945;
+  const total = Math.max(0, subtotal + tax - discount);
 
   const addToCart = (product: Product) => {
     setCart(prev => {
       const exists = prev.find(item => item.product.id === product.id);
-      if (exists) {
-        return prev.map(item =>
-          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
+      if (exists) return prev.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
       return [...prev, { product, quantity: 1 }];
     });
   };
 
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.product.id !== id));
-  };
-
-  const updateQuantity = (id: string, qty: number) => {
-    if (qty <= 0) return removeFromCart(id);
+  const updateQty = (id: string, qty: number) => {
+    if (qty <= 0) return setCart(prev => prev.filter(item => item.product.id !== id));
     setCart(prev => prev.map(item => item.product.id === id ? { ...item, quantity: qty } : item));
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const tax = subtotal * 0.1;
-  const total = subtotal + tax;
-
-  const handleBarcodeSearch = () => {
-    const product = products.find(p => p.barcode === barcodeInput);
-    if (product) {
-      addToCart(product);
-      setBarcodeInput('');
-    }
-  };
-
-  const handleCheckout = () => {
-    if (cart.length === 0) return;
-    orderIdRef.current += 1;
-    const orderId = `ORD-${orderIdRef.current}`;
-    const order: Order = {
+  const sendToKitchen = async () => {
+    if (cart.length === 0 || !supabase) return;
+    setSubmitting(true);
+    const orderId = crypto.randomUUID().slice(0, 8).toUpperCase();
+    const items = cart.map(ci => ({
+      product_id: ci.product.id,
+      product_name: ci.product.name,
+      quantity: ci.quantity,
+      unit_price: ci.product.price,
+      customizations: {},
+    }));
+    if (!supabase) return;
+    const orderPayload = {
       id: orderId,
-      items: [...cart],
+      table_id: tableId || null,
+      table_number: tableId ? Number(tables.find(t => t.id === tableId)?.number) || null : null,
+      customer_name: customerName || null,
+      customer_count: customerCount,
+      items,
       subtotal,
       tax,
-      discount: 0,
+      discount,
       total,
-      paymentMethod,
-      cashierId: user!.id,
-      cashierName: user!.name,
-      createdAt: new Date().toISOString(),
+      payment_method: 'cash',
+      status: 'preparing',
+      created_by: 'current-user',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
-    saveOrders([...getOrders(), order]);
-    const updatedProducts = products.map(p => {
-      const cartItem = cart.find(ci => ci.product.id === p.id);
-      if (cartItem) return { ...p, stock: p.stock - cartItem.quantity };
-      return p;
-    });
-    saveProducts(updatedProducts);
-    setProducts(updatedProducts);
-    setReceipt(order);
+    const { error } = await supabase.from('orders').insert(orderPayload);
+    if (error) {
+      alert(error.message);
+      setSubmitting(false);
+      return;
+    }
+    if (tableId && supabase) await supabase.from('tables').update({ status: 'occupied', current_order_id: orderId }).eq('id', tableId);
     setCart([]);
+    setDiscount(0);
+    setCustomerName('');
+    setSubmitting(false);
+    router.push('/dashboard/orders');
   };
 
-  if (receipt) {
-    return (
-      <div>
-        <h1 className="text-2xl font-bold mb-4">Receipt</h1>
-        <div className="bg-white border rounded p-6 max-w-md">
-          <h2 className="text-xl font-bold mb-4">Restaurant POS</h2>
-          <p className="text-sm text-gray-500 mb-2">Order #{receipt.id}</p>
-          <p className="text-sm text-gray-500 mb-4">{new Date(receipt.createdAt).toLocaleString()}</p>
-          <hr className="mb-4" />
-          <ul className="space-y-2 mb-4">
-            {receipt.items.map(item => (
-              <li key={item.product.id} className="flex justify-between">
-                <span>{item.product.name} x{item.quantity}</span>
-                <span>${(item.product.price * item.quantity).toFixed(2)}</span>
-              </li>
-            ))}
-          </ul>
-          <hr className="mb-4" />
-          <p>Subtotal: ${receipt.subtotal.toFixed(2)}</p>
-          <p>Tax: ${receipt.tax.toFixed(2)}</p>
-          <p className="text-xl font-bold">Total: ${receipt.total.toFixed(2)}</p>
-          <p className="mt-2">Payment: {receipt.paymentMethod.toUpperCase()}</p>
-          <p>Cashier: {receipt.cashierName}</p>
-          <button onClick={() => window.print()} className="mt-6 bg-black text-white px-4 py-2 rounded w-full">Print Receipt</button>
-          <button onClick={() => setReceipt(null)} className="mt-4 bg-gray-400 text-white px-4 py-2 rounded w-full">New Order</button>
+  return (
+    <div className="flex gap-6">
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-4">
+          {['All', ...categories.map(c => c.name)].map(cat => (
+            <button key={cat} onClick={() => setCategoryFilter(cat)} className={`px-3 py-1.5 rounded-full text-sm border ${categoryFilter === cat ? 'bg-black text-white border-black' : 'bg-white text-gray-700'}`}>{cat}</button>
+          ))}
+          <span className="ml-auto text-sm text-gray-500">{filtered.length} items</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filtered.map(product => (
+            <div key={product.id} className="bg-white border rounded-2xl p-4 hover:shadow-md transition cursor-pointer" onClick={() => addToCart(product)}>
+              <div className="h-24 bg-gray-100 rounded-xl mb-3" />
+              <h3 className="font-semibold text-sm">{product.name}</h3>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-gray-900 font-medium">${product.price.toFixed(2)}</p>
+                <span className="text-xs text-gray-500">Stock: {product.stock}</span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Sales / POS</h1>
-      <div className="flex gap-4">
-        <div className="flex-1">
-          <div className="flex gap-4 mb-4">
-            <input
-              type="text"
-              placeholder="Search products or scan barcode..."
-              className="border rounded px-3 py-2 flex-1"
-              value={barcodeInput || search}
-              onChange={(e) => { setBarcodeInput(e.target.value); setSearch(e.target.value); }}
-            />
-            <button onClick={handleBarcodeSearch} className="bg-blue-600 text-white px-4 rounded">
-              Search
-            </button>
+      <div className="w-[420px] bg-white border rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold">Table {tableId ? tables.find(t => t.id === tableId)?.number || '' : '—'}</h2>
+          <div className="flex gap-2">
+            <button className="border rounded-lg p-2 text-gray-600">✏️</button>
+            <button className="border rounded-lg p-2 text-gray-600">🗑</button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filtered.map(product => (
-              <div key={product.id} onClick={() => addToCart(product)} className="bg-white border rounded p-4 cursor-pointer hover:shadow-lg">
-                <h3 className="font-semibold">{product.name}</h3>
-                <p className="text-gray-500">${product.price.toFixed(2)}</p>
-                <p className="text-xs text-gray-400">Stock: {product.stock}</p>
+        </div>
+        <select value={tableId} onChange={e => setTableId(e.target.value)} className="w-full border rounded-lg px-3 py-2 mb-3">
+          <option value="">Select table</option>
+          {tables.map(t => <option key={t.id} value={t.id}>Table {t.number} ({t.status})</option>)}
+        </select>
+        <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Customer name" className="w-full border rounded-lg px-3 py-2 mb-3" />
+        <div className="space-y-3 mb-4">
+          {cart.map(item => (
+            <div key={item.product.id} className="flex items-center justify-between border rounded-xl px-3 py-3">
+              <div>
+                <p className="font-medium text-sm">{item.product.name}</p>
+                <p className="text-xs text-gray-500">${item.product.price.toFixed(2)} x {item.quantity}</p>
               </div>
-            ))}
-          </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => updateQty(item.product.id, item.quantity - 1)} className="w-7 h-7 rounded-full border flex items-center justify-center">-</button>
+                <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
+                <button onClick={() => updateQty(item.product.id, item.quantity + 1)} className="w-7 h-7 rounded-full border flex items-center justify-center">+</button>
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="w-96 bg-white border rounded p-4">
-          <h2 className="text-xl font-bold mb-4">Cart</h2>
-          {cart.length === 0 ? <p>Cart is empty</p> : (
-            <ul className="space-y-2 mb-4">
-              {cart.map(item => (
-                <li key={item.product.id} className="flex justify-between items-center border-b pb-2">
-                  <div>
-                    <p className="font-medium">{item.product.name}</p>
-                    <p className="text-sm text-gray-500">${item.product.price.toFixed(2)} x {item.quantity}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input type="number" value={item.quantity} onChange={e => updateQuantity(item.product.id, parseInt(e.target.value) || 1)} className="w-16 border rounded px-2 py-1" min="1" />
-                    <button onClick={() => removeFromCart(item.product.id)} className="text-red-500 hover:text-red-700">×</button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="border-t pt-4 space-y-2">
-            <p>Subtotal: ${subtotal.toFixed(2)}</p>
-            <p>Tax: ${tax.toFixed(2)}</p>
-            <p className="text-xl font-bold">Total: ${total.toFixed(2)}</p>
-            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'card' | 'mobile')} className="w-full border rounded px-3 py-2">
-              <option value="cash">Cash</option>
-              <option value="card">Card</option>
-              <option value="mobile">Mobile</option>
-            </select>
-            <button onClick={handleCheckout} disabled={cart.length === 0} className="w-full bg-green-600 text-white py-2 rounded disabled:bg-gray-400">
-              Checkout
-            </button>
-          </div>
+        <div className="border-t pt-3 space-y-2 text-sm">
+          <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+          <div className="flex justify-between text-gray-600"><span>Tax (9.45%)</span><span>${tax.toFixed(2)}</span></div>
+          <div className="flex justify-between text-gray-600"><span>Discount (%)</span><input type="number" value={discount} onChange={e => setDiscount(Number(e.target.value) || 0)} className="w-20 border rounded px-2 py-1 text-right" /></div>
+          <div className="flex justify-between font-bold text-base pt-2"><span>Total</span><span>${total.toFixed(2)}</span></div>
         </div>
+        <button onClick={sendToKitchen} disabled={!cart.length || submitting} className="mt-4 w-full bg-blue-600 text-white py-3 rounded-xl font-semibold disabled:bg-gray-300">Send to kitchen</button>
       </div>
     </div>
   );
