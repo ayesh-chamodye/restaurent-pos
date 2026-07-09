@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Product, ProductCategory, CartItem, Order } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { Search, Plus, Minus, Trash2, Send, ChefHat, Package } from 'lucide-react';
 
 export default function SalesPage() {
   const router = useRouter();
@@ -105,7 +106,9 @@ export default function SalesPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map(product => (
             <div key={product.id} className="bg-white border rounded-2xl p-4 hover:shadow-md transition cursor-pointer" onClick={() => addToCart(product)}>
-              <div className="h-24 bg-gray-100 rounded-xl mb-3" />
+              <div className="h-24 bg-gray-100 rounded-xl mb-3 flex items-center justify-center text-gray-400">
+                <Package size={32} />
+              </div>
               <h3 className="font-semibold text-sm">{product.name}</h3>
               <div className="flex items-center justify-between mt-2">
                 <p className="text-gray-900 font-medium">${product.price.toFixed(2)}</p>
@@ -118,10 +121,10 @@ export default function SalesPage() {
       <div className="w-[420px] bg-white border rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">Table {tableId ? tables.find(t => t.id === tableId)?.number || '' : '—'}</h2>
-          <div className="flex gap-2">
-            <button className="border rounded-lg p-2 text-gray-600">✏️</button>
-            <button className="border rounded-lg p-2 text-gray-600">🗑</button>
-          </div>
+              <div className="flex gap-2">
+                <button className="border rounded-lg p-2 text-gray-600"><Search size={16} /></button>
+                <button className="border rounded-lg p-2 text-gray-600"><Trash2 size={16} /></button>
+              </div>
         </div>
         <select value={tableId} onChange={e => setTableId(e.target.value)} className="w-full border rounded-lg px-3 py-2 mb-3">
           <option value="">Select table</option>
@@ -136,9 +139,9 @@ export default function SalesPage() {
                 <p className="text-xs text-gray-500">${item.product.price.toFixed(2)} x {item.quantity}</p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => updateQty(item.product.id, item.quantity - 1)} className="w-7 h-7 rounded-full border flex items-center justify-center">-</button>
+                <button onClick={() => updateQty(item.product.id, item.quantity - 1)} className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-gray-50"><Minus size={14} /></button>
                 <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
-                <button onClick={() => updateQty(item.product.id, item.quantity + 1)} className="w-7 h-7 rounded-full border flex items-center justify-center">+</button>
+                <button onClick={() => updateQty(item.product.id, item.quantity + 1)} className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-gray-50"><Plus size={14} /></button>
               </div>
             </div>
           ))}
@@ -149,7 +152,9 @@ export default function SalesPage() {
           <div className="flex justify-between text-gray-600"><span>Discount (%)</span><input type="number" value={discount} onChange={e => setDiscount(Number(e.target.value) || 0)} className="w-20 border rounded px-2 py-1 text-right" /></div>
           <div className="flex justify-between font-bold text-base pt-2"><span>Total</span><span>${total.toFixed(2)}</span></div>
         </div>
-        <button onClick={sendToKitchen} disabled={!cart.length || submitting} className="mt-4 w-full bg-blue-600 text-white py-3 rounded-xl font-semibold disabled:bg-gray-300">Send to kitchen</button>
+        <button onClick={sendToKitchen} disabled={!cart.length || submitting} className="mt-4 w-full bg-blue-600 text-white py-3 rounded-xl font-semibold disabled:bg-gray-300 inline-flex items-center justify-center gap-2">
+          <ChefHat size={18} /> Send to kitchen
+        </button>
       </div>
     </div>
   );

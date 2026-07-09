@@ -5,17 +5,29 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { signOut } from 'next-auth/react';
 import { supabase } from '@/lib/supabase';
+import {
+  LayoutDashboard,
+  ClipboardList,
+  ShoppingCart,
+  Armchair,
+  Package,
+  ScanBarcode,
+  BarChart3,
+  User,
+  Settings,
+} from 'lucide-react';
 import type { Order, Table } from '@/types';
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { href: '/dashboard/orders', label: 'Order queue', icon: '🧾' },
-  { href: '/dashboard/sales', label: 'Sales', icon: '🛒' },
-  { href: '/dashboard/tables', label: 'Tables', icon: '🪑' },
-  { href: '/dashboard/inventory', label: 'Inventory', icon: '📦' },
-  { href: '/dashboard/scanner', label: 'Scanner', icon: '📷' },
-  { href: '/dashboard/reports', label: 'Reports', icon: '📈' },
-  { href: '/dashboard/profile', label: 'Profile', icon: '👤' },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/orders', label: 'Order queue', icon: ClipboardList },
+  { href: '/dashboard/sales', label: 'Sales', icon: ShoppingCart },
+  { href: '/dashboard/tables', label: 'Tables', icon: Armchair },
+  { href: '/dashboard/inventory', label: 'Inventory', icon: Package },
+  { href: '/dashboard/scanner', label: 'Scanner', icon: ScanBarcode },
+  { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/dashboard/profile', label: 'Profile', icon: User },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -69,16 +81,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <p className="text-xs text-gray-500 mt-1">Inventory</p>
         </div>
         <nav className="flex-1 p-4 space-y-2">
-          {navItems.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
-            </a>
-          ))}
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <a
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <Icon size={18} />
+                <span>{item.label}</span>
+              </a>
+            );
+          })}
         </nav>
         <div className="p-4 border-t">
           <p className="text-sm font-medium text-gray-900">{user.name}</p>

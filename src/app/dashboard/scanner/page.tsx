@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { Product } from '@/types';
+import { Search, Trash2, ShoppingCart, XCircle } from 'lucide-react';
 
 export default function ScannerPage() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function ScannerPage() {
       <div className="bg-white border rounded-2xl p-6">
         <div className="flex gap-3 mb-4">
           <input value={code} onChange={e => setCode(e.target.value)} placeholder="Scan barcode..." className="flex-1 border rounded-xl px-3 py-2" />
-          <button onClick={search} className="bg-blue-600 text-white px-4 rounded-xl">Search</button>
+          <button onClick={search} className="bg-blue-600 text-white px-4 rounded-xl inline-flex items-center gap-2"><Search size={16} /> Search</button>
         </div>
         {message && <p className="text-sm text-red-600 mb-3">{message}</p>}
         {product && (
@@ -55,13 +56,13 @@ export default function ScannerPage() {
                 <p className="font-medium">{item.name}</p>
                 <p className="text-sm text-gray-500">${item.price.toFixed(2)}</p>
               </div>
-              <button onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))} className="text-red-600">Remove</button>
+              <button onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))} className="text-red-600 inline-flex items-center gap-1"><Trash2 size={16} /> Remove</button>
             </div>
           ))}
         </div>
         <div className="flex gap-3 mt-4">
-          <button onClick={goToSales} className="flex-1 bg-blue-600 text-white py-2 rounded-xl">Go to sales</button>
-          <button onClick={clear} className="flex-1 border rounded-xl py-2">Clear</button>
+          <button onClick={goToSales} className="flex-1 bg-blue-600 text-white py-2 rounded-xl inline-flex items-center justify-center gap-2"><ShoppingCart size={16} /> Go to sales</button>
+          <button onClick={clear} className="flex-1 border rounded-xl py-2 inline-flex items-center justify-center gap-2"><XCircle size={16} /> Clear</button>
         </div>
       </div>
     </div>
