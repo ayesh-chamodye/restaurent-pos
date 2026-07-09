@@ -1,8 +1,9 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import type { User } from '@/types';
 import { getUsers, setSession, clearSession, getSession, seedData } from '@/lib/store';
+import { useSession } from 'next-auth/react';
 
 interface AuthContextType {
   user: User | null;
@@ -13,8 +14,26 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function toLocalUser(nextAuthUser: { name?: string | null; email?: string | null; image?: string | null }): User | null {
+  if (!nextAuthUser?.email) return null;
+  const users = getUsers();
+  let found = users.find(u => u.email === nextAuthUser.email);
+  if (!found) {
+    found = {
+      id: `google-${nextAuthUser.email}`,
+      name: nextAuthUser.name || 'Google User',
+      email: nextAuthUser.email,
+      role: 'cashier',
+      pin: '',
+      createdAt: new Date().toISOString(),
+    };
+    users.push(found);
+  }
+  return found;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
+  const [localUser, setLocalUser] = useState<User | null>(() => {
     seedData();
     const session = getSession();
     if (session) {
@@ -25,12 +44,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   });
   const [loading] = useState(false);
+  const { data: nextAuthSession, status: nextAuthStatus } = useSession();
+
+  const nextAuthUser = nextAuthSession?.user ? toLocalUser(nextAuthSession.user) : null;
+  const user = nextAuthUser || localUser;
 
   const login = (pin: string): User | null => {
     const users = getUsers();
     const found = users.find(u => u.pin === pin);
     if (found) {
-      setUser(found);
+      setLocalUser(found);
       setSession({ userId: found.id, name: found.name, role: found.role });
       return found;
     }
@@ -38,12 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    setUser(null);
+    setLocalUser(null);
     clearSession();
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading: loading || nextAuthStatus === 'loading', login, logout }}>
       {children}
     </AuthContext.Provider>
   );

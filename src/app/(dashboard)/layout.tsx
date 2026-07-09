@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { signOut } from 'next-auth/react';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
@@ -15,6 +16,12 @@ const navItems = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, loading, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut({ redirect: false });
+    logout();
+    router.push('/login');
+  };
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -50,7 +57,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
         <div className="p-4 border-t border-gray-700">
           <p className="text-sm text-gray-300 mb-2">Logged in as: {user.name}</p>
-          <button onClick={logout} className="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+          <button onClick={handleLogout} className="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
             Logout
           </button>
         </div>
