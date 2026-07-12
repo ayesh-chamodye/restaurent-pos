@@ -1,37 +1,51 @@
-import { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../api/auth/[...nextauth]/route';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 import DashboardLayoutClient from './layout-client';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
 
-export const metadata: Metadata = {
-  title: 'Dashboard - Nearfood resto',
-  description: 'Restaurant POS Dashboard',
-};
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+  const [orderCount, setOrderCount] = useState(0);
+  const [tableCount, setTableCount] = useState(0);
+  const [reservationCount, setReservationCount] = useState(0);
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
-  if (!session) redirect('/auth/login');
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/auth/login');
+    }
+  }, [user, loading, router]);
 
-  const supabase = await createSupabaseServerClient();
-  let orderCount = 0;
-  let tableCount = 0;
-  let reservationCount = 0;
-  if (supabase) {
-    const [{ count: oc }, { count: tc }, { count: rc }] = await Promise.all([
-      supabase.from('orders').select('*', { count: 'exact', head: true }).neq('status', 'completed').neq('status', 'cancelled'),
-      supabase.from('tables').select('*', { count: 'exact', head: true }),
-      supabase.from('tables').select('*', { count: 'exact', head: true }).eq('status', 'reserved'),
-    ]);
-    orderCount = oc || 0;
-    tableCount = tc || 0;
-    reservationCount = rc || 0;
+  useEffect(() => {
+    const db = supabase;
+    if (!db) return;
+    const load = async () => {
+      const [{ count: oc }, { count: tc }, { count: rc }] = await Promise.all([
+        db.from('orders').select('*', { count: 'exact', head: true }).neq('status', 'completed').neq('status', 'cancelled'),
+        db.from('tables').select('*', { count: 'exact', head: true }),
+        db.from('tables').select('*', { count: 'exact', head: true }).eq('status', 'reserved'),
+      ]);
+      setOrderCount(oc || 0);
+      setTableCount(tc || 0);
+      setReservationCount(rc || 0);
+    };
+    load();
+  }, []);
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  if (!user) {
+    return null;
   }
 
   return (
     <DashboardLayoutClient
-      user={session.user || { name: '', email: '', image: '', role: '' }}
+      user={{ name: user.name, email: user.email, role: user.role }}
       orderCount={orderCount}
       tableCount={tableCount}
       reservationCount={reservationCount}
