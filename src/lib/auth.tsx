@@ -16,12 +16,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
   const { data: nextAuthSession, status: nextAuthStatus } = useSession();
 
-  useEffect(() => {
-    if (nextAuthStatus !== 'loading') setLoading(false);
-  }, [nextAuthStatus]);
+  const loading = nextAuthStatus === 'loading';
 
   const nextAuthUser = nextAuthSession?.user ? { id: nextAuthSession.user.email || '', name: nextAuthSession.user.name || 'User', email: nextAuthSession.user.email || '', role: 'admin' as const, pin: '', createdAt: '' } : null;
 
@@ -44,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading: loading || nextAuthStatus === 'loading', login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
