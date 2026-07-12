@@ -4,12 +4,20 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@/types';
 
+const demoUsers: User[] = [
+  { id: 'u1', name: 'Ayesh Chamodye', email: 'ayeshchamodye@gmail.com', role: 'admin', pin: '', createdAt: new Date().toISOString() },
+  { id: 'u2', name: 'John Cashier', email: 'john@pos.com', role: 'cashier', pin: '', createdAt: new Date().toISOString() },
+];
+
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<User[]>(demoUsers);
   const [form, setForm] = useState({ name: '', email: '', role: 'cashier' as User['role'] });
 
   const load = async () => {
-    if (!supabase) return;
+    if (!supabase) {
+      setUsers(demoUsers);
+      return;
+    }
     const { data } = await supabase.from('profiles').select('*');
     setUsers((data || []).map((row: any) => ({ id: row.id, name: row.name, email: row.email, role: row.role, pin: '', createdAt: row.created_at })));
   };
@@ -18,7 +26,19 @@ export default function UsersPage() {
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supabase) return;
+    if (!supabase) {
+      const newUser: User = {
+        id: crypto.randomUUID(),
+        name: form.name,
+        email: form.email,
+        role: form.role,
+        pin: '',
+        createdAt: new Date().toISOString(),
+      };
+      setUsers(prev => [...prev, newUser]);
+      setForm({ name: '', email: '', role: 'cashier' });
+      return;
+    }
     await supabase.from('profiles').insert({ ...form, id: crypto.randomUUID() });
     setForm({ name: '', email: '', role: 'cashier' });
     load();

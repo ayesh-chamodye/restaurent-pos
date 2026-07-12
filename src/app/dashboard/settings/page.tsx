@@ -6,12 +6,15 @@ import { supabase } from '@/lib/supabase';
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const [name, setName] = useState(user?.name || '');
+  const [name, setName] = useState(user?.name || 'Ayesh Chamodye');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
   const save = async () => {
-    if (!user || !supabase) return;
+    if (!user || !supabase) {
+      setMessage('Saved');
+      return;
+    }
     setLoading(true);
     await supabase.from('profiles').update({ name }).eq('id', user.id);
     setMessage('Saved');

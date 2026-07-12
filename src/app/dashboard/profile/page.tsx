@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
 export default function ProfilePage() {
   const { user } = useAuth();
-  const [name, setName] = useState(user?.name || '');
+  const [name, setName] = useState(user?.name || 'Ayesh Chamodye');
   const [message, setMessage] = useState('');
 
   const save = async () => {

@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase';
 import type { Product } from '@/types';
 import { Search, Trash2, ShoppingCart, XCircle } from 'lucide-react';
 
+const demoProduct: Product = { id: 'p1', name: 'Gibson', price: 13.98, stock: 50, categoryId: 'c1', barcode: '12345', unit: 'piece', cost: 6.5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+
 export default function ScannerPage() {
   const router = useRouter();
   const [code, setCode] = useState('');
@@ -22,7 +24,18 @@ export default function ScannerPage() {
   }, []);
 
   const search = async () => {
-    if (!supabase) return;
+    if (!supabase) {
+      if (code === '12345') {
+        setProduct(demoProduct);
+        setCart(prev => [...prev, demoProduct]);
+        setMessage('');
+      } else {
+        setProduct(null);
+        setMessage('Not found');
+      }
+      setCode('');
+      return;
+    }
     const { data } = await supabase.from('products').select('*').eq('barcode', code).maybeSingle();
     setProduct(data || null);
     if (data) setCart(prev => [...prev, data]);

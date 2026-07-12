@@ -14,11 +14,32 @@ const customizationOptions = [
   { id: 'extra_sauce', label: 'Extra sauce' },
 ];
 
+const demoTables = [
+  { id: 't1', number: 1, status: 'available' as const, current_order_id: undefined as string | undefined },
+  { id: 't2', number: 2, status: 'occupied' as const, current_order_id: undefined as string | undefined },
+  { id: 't3', number: 3, status: 'occupied' as const, current_order_id: undefined as string | undefined },
+  { id: 't4', number: 4, status: 'available' as const, current_order_id: undefined as string | undefined },
+];
+
+const demoCategories: ProductCategory[] = [
+  { id: 'c1', name: 'Main Course', description: '' },
+  { id: 'c2', name: 'Soup', description: '' },
+  { id: 'c3', name: 'Beverages', description: '' },
+];
+
+const demoProducts: Product[] = [
+  { id: 'p1', name: 'Gibson', price: 13.98, stock: 50, categoryId: 'c1', barcode: '12345', unit: 'piece', cost: 6.5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'p2', name: 'Soup of the day', price: 4.59, stock: 20, categoryId: 'c2', barcode: '12346', unit: 'bowl', cost: 2.0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'p3', name: 'Caesar Salad', price: 18.5, stock: 35, categoryId: 'c1', barcode: '12347', unit: 'plate', cost: 7.0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'p4', name: 'Pasta Carbonara', price: 22.0, stock: 25, categoryId: 'c1', barcode: '12348', unit: 'plate', cost: 9.5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'p5', name: 'Iced Lemon Tea', price: 5.5, stock: 100, categoryId: 'c3', barcode: '12349', unit: 'glass', cost: 1.2, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+];
+
 export default function SalesPage() {
   const router = useRouter();
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [tables, setTables] = useState<{ id: string; number: number; status: string }[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>(demoCategories);
+  const [products, setProducts] = useState<Product[]>(demoProducts);
+  const [tables, setTables] = useState<{ id: string; number: number; status: string; current_order_id?: string }[]>(demoTables);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [tableId, setTableId] = useState('');
@@ -31,7 +52,12 @@ export default function SalesPage() {
 
   useEffect(() => {
     const load = async () => {
-      if (!supabase) return;
+      if (!supabase) {
+        setCategories(demoCategories);
+        setProducts(demoProducts);
+        setTables(demoTables);
+        return;
+      }
       const [{ data: cats }, { data: prods }, { data: tbls }] = await Promise.all([
         supabase.from('categories').select('*'),
         supabase.from('products').select('*').gt('stock', 0).order('name'),
@@ -72,7 +98,13 @@ export default function SalesPage() {
   };
 
   const sendToKitchen = async () => {
-    if (cart.length === 0 || !supabase) return;
+    if (cart.length === 0 || !supabase) {
+      setCart([]);
+      setDiscount(0);
+      setCustomerName('');
+      router.push('/dashboard/orders');
+      return;
+    }
     setSubmitting(true);
     const orderId = crypto.randomUUID().slice(0, 8).toUpperCase();
     const items = cart.map(ci => ({

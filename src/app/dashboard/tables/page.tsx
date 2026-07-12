@@ -4,13 +4,27 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Table } from '@/types';
 
+const demoTables: Table[] = [
+  { id: 't1', number: 1, capacity: 4, status: 'available', current_order_id: undefined, created_at: new Date().toISOString() },
+  { id: 't2', number: 2, capacity: 4, status: 'occupied', current_order_id: 'ORD-003', created_at: new Date().toISOString() },
+  { id: 't3', number: 3, capacity: 6, status: 'occupied', current_order_id: 'ORD-001', created_at: new Date().toISOString() },
+  { id: 't4', number: 4, capacity: 2, status: 'available', current_order_id: undefined, created_at: new Date().toISOString() },
+  { id: 't5', number: 5, capacity: 4, status: 'reserved', current_order_id: undefined, created_at: new Date().toISOString() },
+  { id: 't6', number: 6, capacity: 6, status: 'occupied', current_order_id: 'ORD-002', created_at: new Date().toISOString() },
+  { id: 't7', number: 7, capacity: 8, status: 'available', current_order_id: undefined, created_at: new Date().toISOString() },
+  { id: 't8', number: 8, capacity: 2, status: 'available', current_order_id: undefined, created_at: new Date().toISOString() },
+];
+
 export default function TablesPage() {
-  const [tables, setTables] = useState<Table[]>([]);
+  const [tables, setTables] = useState<Table[]>(demoTables);
   const [selected, setSelected] = useState<Table | null>(null);
   const [status, setStatus] = useState<Table['status']>('available');
 
   const load = async () => {
-    if (!supabase) return;
+    if (!supabase) {
+      setTables(demoTables);
+      return;
+    }
     const { data } = await supabase.from('tables').select('*').order('number');
     setTables(data || []);
   };
@@ -18,7 +32,11 @@ export default function TablesPage() {
   useEffect(() => { load(); }, []);
 
   const update = async (table: Table) => {
-    if (!supabase) return;
+    if (!supabase) {
+      setTables(prev => prev.map(t => t.id === table.id ? { ...t, status } : t));
+      setSelected(null);
+      return;
+    }
     await supabase.from('tables').update({ status }).eq('id', table.id);
     setTables(prev => prev.map(t => t.id === table.id ? { ...t, status } : t));
     setSelected(null);

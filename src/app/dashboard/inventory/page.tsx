@@ -4,13 +4,30 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Product, ProductCategory } from '@/types';
 
+const demoProducts: Product[] = [
+  { id: 'p1', name: 'Gibson', price: 13.98, stock: 50, categoryId: 'c1', barcode: '12345', unit: 'piece', cost: 6.5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'p2', name: 'Soup of the day', price: 4.59, stock: 20, categoryId: 'c2', barcode: '12346', unit: 'bowl', cost: 2.0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'p3', name: 'Caesar Salad', price: 18.5, stock: 35, categoryId: 'c1', barcode: '12347', unit: 'plate', cost: 7.0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'p4', name: 'Pasta Carbonara', price: 22.0, stock: 25, categoryId: 'c1', barcode: '12348', unit: 'plate', cost: 9.5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'p5', name: 'Iced Lemon Tea', price: 5.5, stock: 100, categoryId: 'c3', barcode: '12349', unit: 'glass', cost: 1.2, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+];
+const demoCategories: ProductCategory[] = [
+  { id: 'c1', name: 'Main Course', description: '' },
+  { id: 'c2', name: 'Soup', description: '' },
+  { id: 'c3', name: 'Beverages', description: '' },
+];
+
 export default function InventoryPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [products, setProducts] = useState<Product[]>(demoProducts);
+  const [categories, setCategories] = useState<ProductCategory[]>(demoCategories);
   const [form, setForm] = useState({ name: '', category_id: '', price: 0, cost: 0, stock: 0, unit: 'piece', barcode: '' });
 
   const load = async () => {
-    if (!supabase) return;
+    if (!supabase) {
+      setProducts(demoProducts);
+      setCategories(demoCategories);
+      return;
+    }
     const { data: prods } = await supabase.from('products').select('*').order('name');
     setProducts(prods || []);
     const { data: cats } = await supabase.from('categories').select('*').order('name');
@@ -21,7 +38,23 @@ export default function InventoryPage() {
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supabase) return;
+    if (!supabase) {
+      const newProduct: Product = {
+        id: crypto.randomUUID().slice(0, 8),
+        name: form.name,
+        price: form.price,
+        stock: form.stock,
+        categoryId: form.category_id,
+        barcode: form.barcode,
+        unit: form.unit,
+        cost: form.cost,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setProducts(prev => [...prev, newProduct]);
+      setForm({ name: '', category_id: '', price: 0, cost: 0, stock: 0, unit: 'piece', barcode: '' });
+      return;
+    }
     await supabase.from('products').insert({ ...form, id: crypto.randomUUID().slice(0, 8) });
     setForm({ name: '', category_id: '', price: 0, cost: 0, stock: 0, unit: 'piece', barcode: '' });
     load();

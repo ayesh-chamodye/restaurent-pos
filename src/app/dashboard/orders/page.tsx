@@ -1,18 +1,25 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Order } from '@/types';
 
+const demoOrders: Order[] = [
+  { id: 'ORD-001', table_number: 3, status: 'preparing', items: [{ product: { id: 'p1', name: 'Gibson', price: 13.98, stock: 50, categoryId: 'c1', barcode: '12345', unit: 'piece', cost: 6.5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, quantity: 2 }], total: 28.5, created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(), subtotal: 27.96, tax: 2.64, discount: 0, payment_method: 'cash', created_by: 'admin', updated_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(), customer_count: 2 },
+  { id: 'ORD-002', table_number: 6, status: 'ready', items: [{ product: { id: 'p2', name: 'Soup of the day', price: 4.59, stock: 20, categoryId: 'c2', barcode: '12346', unit: 'bowl', cost: 2.0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, quantity: 1 }], total: 14.0, created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(), subtotal: 13.77, tax: 1.3, discount: 0, payment_method: 'cash', created_by: 'admin', updated_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(), customer_count: 1 },
+  { id: 'ORD-003', table_number: 2, status: 'pending', items: [{ product: { id: 'p3', name: 'Caesar Salad', price: 18.5, stock: 35, categoryId: 'c1', barcode: '12347', unit: 'plate', cost: 7.0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, quantity: 1 }], total: 18.5, created_at: new Date(Date.now() - 1000 * 60 * 2).toISOString(), subtotal: 18.14, tax: 1.71, discount: 0, payment_method: 'cash', created_by: 'admin', updated_at: new Date(Date.now() - 1000 * 60 * 2).toISOString(), customer_count: 2 },
+];
+
 export default function OrdersPage() {
-  const router = useRouter();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>(demoOrders);
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     const load = async () => {
-      if (!supabase) return;
+      if (!supabase) {
+        setOrders(demoOrders);
+        return;
+      }
       let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
       if (filter !== 'all') query = query.eq('status', filter);
       const { data } = await query;
@@ -22,7 +29,10 @@ export default function OrdersPage() {
   }, [filter]);
 
   const updateStatus = async (id: string, status: Order['status']) => {
-    if (!supabase) return;
+    if (!supabase) {
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, status, updated_at: new Date().toISOString() } : o));
+      return;
+    }
     await supabase.from('orders').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status, updated_at: new Date().toISOString() } : o));
   };
