@@ -19,6 +19,9 @@ export default function TablesPage() {
   const [tables, setTables] = useState<Table[]>(demoTables);
   const [selected, setSelected] = useState<Table | null>(null);
   const [status, setStatus] = useState<Table['status']>('available');
+  const [showAdd, setShowAdd] = useState(false);
+  const [number, setNumber] = useState('');
+  const [capacity, setCapacity] = useState('4');
 
   const load = async () => {
     if (!supabase) {
@@ -42,9 +45,30 @@ export default function TablesPage() {
     setSelected(null);
   };
 
+  const addTable = () => {
+    const num = Number(number);
+    const cap = Number(capacity);
+    if (!num || !cap) return;
+    const newTable: Table = {
+      id: crypto.randomUUID(),
+      number: num,
+      capacity: cap,
+      status: 'available',
+      current_order_id: undefined,
+      created_at: new Date().toISOString(),
+    };
+    setTables(prev => [...prev, newTable].sort((a, b) => a.number - b.number));
+    setNumber('');
+    setCapacity('4');
+    setShowAdd(false);
+  };
+
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Manage tables</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Manage tables</h1>
+        <button onClick={() => setShowAdd(true)} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700">Add Table</button>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {tables.map(table => (
           <div key={table.id} onClick={() => { setSelected(table); setStatus(table.status); }} className={`bg-white border rounded-2xl p-5 cursor-pointer hover:shadow-md ${table.status === 'available' ? 'border-green-200' : table.status === 'occupied' ? 'border-red-200' : 'border-amber-200'}`}>
@@ -66,6 +90,27 @@ export default function TablesPage() {
             <div className="flex gap-3">
               <button onClick={() => update(selected)} className="flex-1 bg-blue-600 text-white rounded-lg py-2">Save</button>
               <button onClick={() => setSelected(null)} className="flex-1 border rounded-lg py-2">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showAdd && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <h3 className="text-lg font-bold mb-4">Add Table</h3>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Table Number</label>
+                <input type="number" value={number} onChange={e => setNumber(e.target.value)} className="w-full border rounded-lg px-3 py-2" placeholder="e.g. 9" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
+                <input type="number" value={capacity} onChange={e => setCapacity(e.target.value)} className="w-full border rounded-lg px-3 py-2" placeholder="e.g. 4" />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={addTable} className="flex-1 bg-blue-600 text-white rounded-lg py-2">Add</button>
+              <button onClick={() => setShowAdd(false)} className="flex-1 border rounded-lg py-2">Cancel</button>
             </div>
           </div>
         </div>
